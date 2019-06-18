@@ -1,0 +1,264 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>捕捉小球</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+        }
+        body {
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            letter-spacing: -1px;
+            position: absolute;
+            top: 0;
+            right: 15px;
+            color: white;
+        }
+        .explain{
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            color: white; 
+        }
+        .balls_time {
+            position: absolute;
+            top: 120px;
+            right: 30px;
+            color: white;
+        }
+        .balls_time span{
+            display: inline-block;
+            width:20px;
+            color:red;
+            text-align: center;
+        }
+        .time{
+            position: absolute;
+            top: 150px;
+            right: 10px;
+            color: white;
+        }
+        .time span{
+            display: inline-block;
+            width:50px;
+            color:yellow;
+            text-align: center;
+        }
+        button{
+            position: absolute;
+            top: 100px;
+            left: 45%;
+            color: red;
+            font-size:20px;
+            padding:10px 20px;
+            border-radius:5px;
+            border:none;
+        }
+        
+    </style>
+  </head>
+
+  <body>
+    <h1>捕捉小球</h1>
+    <p class="explain">移动鼠标，触碰到<br>小球则捕捉成功</p>
+    <p class="balls_time">还剩<span></span>个球</p>
+    <p class="time">已花<span></span>s 时间</p>
+    <canvas></canvas>
+
+    <script>
+        const balls_num = 25;
+        const size_min = 10;
+        const size_max = 20;
+        const speed = 10;
+
+        const para1 = document.querySelector('.balls_time span');
+        const para2 = document.querySelector('.time span');
+        const canvas = document.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+        // 将画布窗尺寸置为窗口内尺寸
+        const width = canvas.width = window.innerWidth;
+        const height = canvas.height = window.innerHeight;
+
+        // 生成随机数的函数
+        function random(min, max) {
+            return Math.floor(Math.random()*(max-min)) + min;
+        }
+
+        // 生成随机颜色的函数
+        function randomColor() {
+            return 'rgb(' +
+                random(0, 255) + ', ' +
+                random(0, 255) + ', ' +
+                random(0, 255) + ')';
+        }
+
+        // 设定一个基本结构
+        class Shape {
+            constructor(x, y, velX, velY, exists) {
+                this.x = x;
+                this.y = y;
+                this.velX = velX;
+                this.velY = velY;
+                this.exists = exists;
+            }
+        }
+
+        //设定小球数据
+        class Ball extends Shape {
+            constructor(x, y, velX, velY, color, size, exists) {
+                super(x, y, velX, velY, exists);
+                this.color = color;
+                this.size = size;
+            }
+            //画小球方法
+            draw() {
+                ctx.beginPath();
+                ctx.fillStyle = this.color;
+                ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            //使小球动起来方法，及碰到边界会反弹回去
+            update() {
+                if ((this.x + this.size) >= width) {
+                this.velX = -(this.velX);
+                }
+                if ((this.x - this.size) <= 0) {
+                this.velX = -(this.velX);
+                }
+                if ((this.y + this.size) >= height) {
+                this.velY = -(this.velY);
+                }
+                if ((this.y - this.size) <= 0) {
+                this.velY = -(this.velY);
+                }
+                this.x += this.velX;
+                this.y += this.velY;
+            }
+        }
+        
+        let resetButton;
+        //设定捕捉圈数据
+        class CatchCircle extends Shape {
+            constructor(x, y, velX, velY, exists) {
+                super(x, y, velX, velY, exists);
+                this.color = "white";
+                this.size = 20;
+            }
+            //画捕捉圈方法
+            draw() {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            //设定捕捉规则
+            collisionDetect() {
+                for (let j = 0; j < balls.length; j++) {
+                    //计算捕捉圈与小球的距离
+                    if (balls[j].exists) {
+                        const dx = this.x - balls[j].x;
+                        const dy = this.y - balls[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        //接触则捕捉成功
+                        if (distance < this.size + balls[j].size) {
+                            balls[j].exists = false;
+                            count--;
+                            para1.textContent = count;
+                            //设定捕获所有小球后的事件
+                            if(count===0){
+                                clearInterval(timer);
+                                resetButton = document.createElement('button');
+                                resetButton.textContent = '重新开始';
+                                document.body.appendChild(resetButton);
+                                resetButton.addEventListener('click', resetGame);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //设定重新开始游戏事件
+        function resetGame(){
+            resetButton.parentNode.removeChild(resetButton);
+            time = 0;
+            balls = [];
+            cancelAnimationFrame(lp);
+            loop();
+            timer=setInterval(function(){   
+                time++;
+                para2.textContent = time/100;
+            },10)
+        }
+        
+        //生成捕捉圈
+        canvas.addEventListener("mouseover",function(e){
+            evilballs=new CatchCircle(e.offsetX,e.offsetY,true);
+            function move(){
+                evilballs.draw();
+                evilballs.collisionDetect(); 
+                requestAnimationFrame(move);
+            }    
+            
+            move();  
+        })
+
+        canvas.addEventListener("mousemove",function(e){
+            evilballs=new CatchCircle(e.offsetX,e.offsetY,true);
+            evilballs.draw();
+            evilballs.collisionDetect();     
+        })
+             
+        let balls = [];
+        let count = 0;
+        let time = 0;
+        //定义一个循环来不停地播放
+        function loop() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, width, height);
+
+            while (balls.length < balls_num) {
+                const size = random(size_min, size_max);
+                const ball = new Ball(
+                    // 为避免绘制错误，球至少离画布边缘球本身一倍宽度的距离
+                    random(0 + size, width - size),
+                    random(0 + size, height - size),
+                    random(-speed, speed),
+                    random(-speed, speed),
+                    randomColor(),
+                    size,
+                    true
+                );
+                balls.push(ball);
+                count++;
+                para1.textContent = count;
+            }
+
+            for (let i = 0; i < balls.length; i++) {
+                if (balls[i].exists) {
+                    balls[i].draw();
+                    balls[i].update();
+                }
+            }
+
+            lp=requestAnimationFrame(loop);
+        }
+
+        // 执行动画
+        loop();
+        //开始计算时间
+        timer=setInterval(function(){   
+            time++;
+            para2.textContent = time/100;
+        },10)
+    </script>
+  </body>
+</html>
